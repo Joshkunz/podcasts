@@ -1,5 +1,8 @@
 #!/usr/bin/python
 from operator import methodcaller
+from collections import defaultdict
+import re
+import fnmatch
 import os
 import codecs
 import yaml
@@ -13,7 +16,7 @@ from pprint import pprint
 
 ## Configuration
 
-FEED_STORE = ".feeds"
+FEED_STORE = "feeds"
 EPISODE_STORE = "episodes"
 
 ## Constants
@@ -55,13 +58,13 @@ def serialize_to_unicode(x):
 		return _s2u(x, xrange(len(x)))
 	elif isinstance(x, dict):
 		return _s2u(x, x.keys())
-	else
+	else:
 		return unicode(x)
 
 def _s2u(x, key):
 	"mutable serialization helper"
 	for index in key:
-		x[index] = serialize_to_unicode(l[index])
+		x[index] = serialize_to_unicode(x[index])
 	return x
 
 def get_safe(list, index, default=None):
@@ -83,6 +86,10 @@ def ensure_cast_dir(cast_name):
 	if os.path.exists(path) != True:
 		os.makedirs(path)
 	return path
+
+def ensure_feed_dir():
+	if os.path.exists(FEED_STORE) != True:
+		os.makedirs(FEED_STORE)
 
 def feed_pathname(feed_name):
 	"generate the name for a feed cache"
@@ -109,7 +116,11 @@ def iter_feed_mask(iterable, only=[]):
 
 def iter_details(parsed_feed):
 	for item in parsed_feed.xpath("//item"):
-		yield item_details(item)
+		try:
+			yield item_details(item)
+		except IndexError:
+			# Some critical value couldn't be found...
+			pass
 
 def feed_iterator(only=[]):
 	if only == []:
@@ -148,7 +159,7 @@ def item_details(feed_item):
 		"published": parse_date(feed_item.xpath("pubDate/text()")[0]),
 		"file": find_file(feed_item)
 	})
-	return dict([(key, unicode(value)) for key, value in details.iteritems()])
+	return serialize_to_unicode(details)
 
 ## Utilities/Printers
 
@@ -159,11 +170,6 @@ def get_length(headers, filed):
 		return int(filed["length"])
 	else:
 		return None
-
-def progress_printer(read, total, round_to=2):
-	"print a progress bar"
-	if read is DONE_READING:
-		sys.stdout.write("\n")
 
 def progressive_read_url(page, out_file, length, decode_unicode=False,
 					 	 chunk_size=1024, print_hook=SimpleProgress()):
@@ -179,11 +185,11 @@ def progressive_read_url(page, out_file, length, decode_unicode=False,
 		print_hook.chunk_written(read_bytes, length) 
 	print_hook.done_writing() #tell the printer reading is Done
 
-
 ## Update Functionality
 
 def update_feedfile(url, name):
 	"Get a feed from the internet"
+	ensure_feed_dir() # sanity check
 	print "Checking: {0}".format(name)
 	page = requests.get(url)
 	with open(feed_pathname(name), 'w') as feed_file:
@@ -212,53 +218,76 @@ def download_podcast(cast_name, item_details):
 	with open(path, 'wb') as podcast_file:
 		progressive_read_url(page, podcast_file, length)
 
-def catalog(cast_name, feed):
-	"Create a catalog for a podcast from a feed."
-	parsed = etree.parse(feed)
-	top = parsed.find('channel')
-	channel = {
-		'title': top.find('title').text,
-		'link': top.find('link').text,
-		'description': top.find('description').text,
-		'episodes': []
-	}
-	for episode in iter_details(parsed):
-		episode['published'] = episode['published'].isoformat()
-		channel['episodes'].append(episode)
-	path = ensure_cast_dir(cast_name)
-	path = os.path.join(path, "catalog.yaml")
-	with open(path, 'w') as catalog_file:
-		yaml.dump(clean_dict(channel), 
-				  stream=catalog_file, 
-				  default_flow_style=False)
-
-
 def update(args):
 	"Update feeds."
-	if args.silent is False:
-		for feed_d in feed_iterator(args.podcast):
-			try:
-				update_feedfile(feed_d["url"], feed_d["name"])
-			except Exception, e:
-				print e
-	if args.silent is False or args.rebuild:
-		for cast in feed_iterator(args.podcast):
-			try:
-				with open(feed_pathname(cast["name"])) as feed:
-					catalog(cast["name"], feed)
-			except Exception, e:
-				print e
+	for feed in feed_iterator(args.podcast):
+		try:
+			update_feedfile(feed["url"], feed["name"])
+		except Exception, e:
+			print e
+
+def iter_parsed_feeds(only=[]):
+	for feed in feed_iterator(only):
+		yield (feed["name"], etree.parse(feed_pathname(feed["name"])))
+
+def iter_first_episodes(only=[]):
+	for name, feed in iter_parsed_feeds(only):
+		yield (name, item_details(feed.xpath("//item")[0]))
+
+def iter_regex_search(regex, fields=["title", "description"], 
+					  case_sensitive=False, only=[]):
+	if case_sensitive:
+		regex = re.compile(regex, re.UNICODE)
+	else:
+		regex = re.compile(regex, re.IGNORECASE | re.UNICODE)
+	for name, feed in iter_parsed_feeds(only):
+		for detail in iter_details(feed):
+			match = False
+			for field in fields:
+				if match == False and regex.search(detail[field]):
+					yield (name, detail)
+
+def iter_glob_search(glob, only=[], fields=["title", "description"],
+					 case_sensitive=False):
+	regex = fnmatch.translate(glob)
+	return iter_regex_search(regex, fields=fields, only=only,
+							 case_sensitive=case_sensitive)
+
+def print_items(detail_group, prefix="\t", cut=25):
+	group = detail_group[:cut]
+	for item in group:
+		print prefix+item["title"].strip()
+	if len(detail_group) > cut:
+		print prefix+"..."
+		print prefix+detail_group[-1]["title"].strip()
+
+def pprint_download_matrix(matrix):
+	for feed, items in matrix.iteritems():
+		print "{0:=^80}".format(" {0} - {1} ".format(feed, len(items)))
+		print_items(items)
 
 def download(args):
-	"Download the most recent feed episode"
-	for feed in feed_iterator(args.podcast):
-		cast_feed = etree.parse(feed_pathname(feed["name"]))
-		cast_details = item_details(cast_feed.xpath("//item")[0])
-		download_podcast(feed["name"], cast_details)
+	"Download Podcast Episodes"
+	if args.search is not None:
+		if args.regex == True:
+			_iterfunc = iter_regex_search
+		else:
+			_iterfunc = iter_glob_search
+		_iter = _iterfunc(args.search, only=args.podcast, 
+						  case_sensitive=args.case_sensitive)
+	else:
+		_iter = iter_first_episodes(args.podcast)
+	
+	matrix = defaultdict(list)
+	for key, value in _iter:
+		matrix[key].append(value)
 
-def search(args):
-	"Search for episodes."
-	print "I can haz ur podcats."
+	if args.silent:
+		pprint_download_matrix(matrix)
+	else:
+		for feed, episodes in matrix.iteritems():
+			for episode in episodes:
+				download_podcast(feed, episode)
 
 ## REPL/eval
 
@@ -290,11 +319,6 @@ if __name__ == "__main__":
 	update_.set_defaults(method=update)
 	update_.add_argument("podcast", nargs="*",
 						 help="Add podcast names to narrow the update.")
-	update_.add_argument("-s", "--silent", action='store_true', dest='silent',
-						 help="don't download any feeds.")
-	update_.add_argument("-r", "--rebuild", action='store_true', dest='rebuild',
-						 help="rebuild podcast catalogs. use with --silent to\
-						 rebuild podcasts without re-fetching thier feeds.")
 	update_.add_argument("-f", "--force", action='store_true', dest='force',
 						 help="force updating podcast feeds, even if it \
 						 violates time restrictions in the feeds.yaml file.")
@@ -302,30 +326,30 @@ if __name__ == "__main__":
 	## Download Section
 
 	download_ = subparsers.add_parser("download",
-									  help="download podcast episodes.")
+									  help="download podcast episodes. If run\
+									  with no search arguments, download the most\
+									  recent podcast episode.")
 	download_.set_defaults(method=download)
 	download_.add_argument("podcast", nargs="*",
 						   help="apply the actions to a subset of the\
 						   podcasts.")
+	download_.add_argument("-S", "--search", help="search for a podcast to\
+						   download.", default=None)
+	download_.add_argument("-E", "--regex", help="Use a regex instead of the\
+						   normal shell-like globbing.", action="store_true")
+	download_.add_argument("-I", "--case-sensitive", help="Run a case-senseitive\
+						   search, insead of the default, case-insenseitive\
+						   search.", action="store_true")
 	download_.add_argument("-s", "--silent", "-d", "--dry-run",
 						   dest='silent', action='store_true',
 						   help="don't actually download any files, just\
-						   run a simulation.")
+						   show which file would have been downloaded.")
 	download_.add_argument("-f", "--force", dest='force', action='store_true',
 						   help="force downloading the the podcasts, even\
 						   if they are already on disk.")
 
-	## Search Section
-	
-	search_ = subparsers.add_parser("search", 
-									help="search for podcast episodes.")
-	search_.set_defaults(method=search)
-	search_.add_argument("podcast", nargs="*",
-						 help="search only named podcasts.")
-
 	# Actual start
 	args = parser.parse_args(sys.argv[1:])
-	print args
 	#sys.exit(0)
 	if args.interactive == True:
 		repl(args, parser)
