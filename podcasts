@@ -230,28 +230,37 @@ def iter_parsed_feeds(only=[]):
 	for feed in feed_iterator(only):
 		yield (feed["name"], etree.parse(feed_pathname(feed["name"])))
 
-def iter_first_episodes(only=[]):
+def iter_search(only=[], match=[], match_any=False):
 	for name, feed in iter_parsed_feeds(only):
-		yield (name, item_details(feed.xpath("//item")[0]))
+		for detail in iter_details(feed):
+			matched = [m(name, detail) for m in match]
+			if match_any == False and all(matched):
+				yield name, detail
+			elif match_any == True and any(matched):
+				yield name, detail
 
-def iter_regex_search(regex, fields=["title", "description"], 
-					  case_sensitive=False, only=[]):
+def match_regex(regex, case_sensitive=False, fields=["title", "description"]):
+	"Match against a regex"
 	if case_sensitive:
 		regex = re.compile(regex, re.UNICODE)
 	else:
-		regex = re.compile(regex, re.IGNORECASE | re.UNICODE)
-	for name, feed in iter_parsed_feeds(only):
-		for detail in iter_details(feed):
-			match = False
-			for field in fields:
-				if match == False and regex.search(detail[field]):
-					yield (name, detail)
+		regex = re.compile(regex, re.UNICODE | re.IGNORECASE)
+	
+	def _match(name, detail):
+		for field in fields:
+			if regex.search(detail[field]):
+				return True
 
-def iter_glob_search(glob, only=[], fields=["title", "description"],
-					 case_sensitive=False):
+	return _match
+
+def match_glob(glob, **kwargs):
+	"Match against a glob"
 	regex = fnmatch.translate(glob)
-	return iter_regex_search(regex, fields=fields, only=only,
-							 case_sensitive=case_sensitive)
+	return match_regex(regex, **kwargs)
+
+def iter_first_episodes(only=[]):
+	for name, feed in iter_parsed_feeds(only):
+		yield (name, item_details(feed.xpath("//item")[0]))
 
 def print_items(detail_group, prefix="\t", cut=25):
 	group = detail_group[:cut]
@@ -269,12 +278,12 @@ def pprint_download_matrix(matrix):
 def download(args):
 	"Download Podcast Episodes"
 	if args.search is not None:
+		matchers = []
 		if args.regex == True:
-			_iterfunc = iter_regex_search
+			matchers.append(match_regex(args.search))
 		else:
-			_iterfunc = iter_glob_search
-		_iter = _iterfunc(args.search, only=args.podcast, 
-						  case_sensitive=args.case_sensitive)
+			matchers.append(match_glob(args.search))
+		_iter = iter_search(only=args.podcast, match=matchers)
 	else:
 		_iter = iter_first_episodes(args.podcast)
 	
