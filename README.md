@@ -35,10 +35,10 @@ You can do that in a `~/.podcastrc` file as shown:
     # all paths are relative to here
     root_dir = "~/podcasts"
 
-    # name of the folder to store cached feeds in
+    # name of the folder to store cached feeds in (relative to root_dir)
     feed_store = "feeds"
 
-    # name of the folder to store downloaded episodes in
+    # name of the folder to store downloaded episodes in (relative to root_dir)
     episode_store = "episodes"
 
 The values provided above are the defaults. If no `~/.podcastrc` file is
@@ -57,7 +57,7 @@ so:
 
 With however many podcasts you want. (note the `...` at the end of the file
 is required.) If you have a list of your podcasts in opml format, you can
-use the supplied opml2feeds and have it generated a feeds.yaml file from
+use the supplied opml2feeds and have it generate a feeds.yaml file from
 your existing opml file.
 
 # using it
@@ -73,8 +73,8 @@ $ podcasts download
 ```
 to download all of the most recent episodes.
 
-for both of these commands you can supply podcast names to these commands
-to make them only work for certain podcasts:
+For both of these commands you can supply podcast names to make them 
+only fetch certain podcasts:
 ```bash
 $ podcasts update radiolab
 $ podcasts update radiolab 99percent
@@ -87,9 +87,9 @@ download like so:
 ```bash
 $ podcasts download -s
 ```
-which will print out a list of matching episodes, in this case, it will
-print out a list of the most recent episode from each podcast, the
-default.
+which will print out a list of matching episodes. In this case, it will
+print out a list of the most recent episode from each podcast (the
+default).
 
 You can supply search terms with the `-S` or `--search` flag like so:
 ```bash
@@ -100,7 +100,7 @@ or description.
 
 By default the -S flag does simple shell style globing like:
 * * matches any string of characters
-* ? matches any single charachter
+* ? matches any single character
 * [seq] matches and character in seq
 * [!seq] matches any character not in seq
 
@@ -110,6 +110,9 @@ regex matchers:
 $ podcasts download -sES "^1[0-9]{2}.*"
 ```
 would find all of the episodes that start with a number from 100 to 199.
+(*Note* the regex matching uses 'search' style matching, so you need a
+^ at the front to match from the start of a string. Also the exact syntax
+for the regex is python style (complete documentation found [here]))
 
 Once you have found what episodes you want to download, all you have to
 do is remove the small s flag (`-s`) and re-run the command:
@@ -192,3 +195,5 @@ Anyways feel free to either contribute or open up issues on github
 with ideas or suggestions.
 
 -- Josh Kunz
+
+  [1]: http://docs.python.org/library/re.html#regular-expression-syntax
