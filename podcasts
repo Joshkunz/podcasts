@@ -15,15 +15,23 @@ import argparse
 from pprint import pprint
 
 ## Configuration
+options = dict(
+    root_dir = "~/podcasts",
+    feed_store = "feeds",
+    episode_store = "episodes"
+)
+
+# check for a config file in ~/.podcastrc
+execfile(os.path.join(os.environ["HOME"], '.podcastrc'), options)
 
 # All paths are relative to this one
-ROOT_DIR = "~/podcasts"
+ROOT_DIR = options["root_dir"]
 
 # Where to keep the cached feeds
-FEED_STORE = "feeds"
+FEED_STORE = options["feed_store"]
 
 # Where to store downloaded episodes
-EPISODE_STORE = "episodes"
+EPISODE_STORE = options["episode_store"] 
 
 ## Constants
 
@@ -41,6 +49,7 @@ sys.stdout = UTF8_WRITER(sys.stdout)
 ## Classes
 
 class SimpleProgress(object):
+    "Simple progress printer"
 
     def __init__(self, round_to=2):
         self.round_to = round_to
