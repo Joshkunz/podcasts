@@ -128,4 +128,67 @@ will match all of the podcasts from radiolab.
 
 # full documentation
 ```bash
+$ podcasts --help
+usage: podcasts [-h] [-i] {update,download} ...
 
+optional arguments:
+  -h, --help            show this help message and exit
+  -i, --interactive, --repl
+                        run in an interactive loop.
+
+commands:
+  {update,download}
+    update              update podcast feeds.
+    download            download podcast episodes. If run with no search
+                        arguments, download the most recent podcast episode.
+$ podcasts update --help                        
+usage: podcasts update [-h] [podcast [podcast ...]]
+
+positional arguments:
+  podcast     Add podcast names to narrow the update.
+
+optional arguments:
+  -h, --help  show this help message and exit
+$ podcasts download --help
+usage: podcasts download [-h] [-S SEARCH] [-E] [-I] [-s] [-f]
+                         [podcast [podcast ...]]
+
+positional arguments:
+  podcast               apply the actions to a subset of the podcasts.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -S SEARCH, --search SEARCH
+                        search for a podcast to download.
+  -E, --regex           Use a regex instead of the normal shell-like globbing.
+  -I, --case-sensitive  Run a case-senseitive search, insead of the default,
+                        case-insenseitive search.
+  -s, --silent, -d, --dry-run
+                        don't actually download any files, just show which
+                        file would have been downloaded.
+  -f, --force           force downloading the the podcasts, even if they are
+                        already on disk.
+```
+
+# hacking
+While this program is pretty useful in its current state, there are definitly
+some things that could use some improvement.
+* File storage is not as flexable as it could be
+* Could have more versatile searching function (or at least one that
+makes more sense)
+* Could put in more configuration options, and move configuration files
+together.
+* Could do a lot of internal code cleanup
+* Maybe track read/unread podcasts. I'm still on the fence about this
+* Get more info about podcast episodes, and maybe use that to search
+as well
+
+The program itself is pretty straightforward, most the searching and
+filter tasks are done through simple iterators and filters so
+it could be easy to simply add some more. Printing and interface
+could use some improvement (like printing search results for example).
+
+Anyways feel free to either contribute or open up issues on github 
+with ideas or suggestions.
+
+-- Josh Kunz
