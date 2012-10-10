@@ -13,8 +13,6 @@ from datetime import datetime
 import mimetypes
 import argparse
 from pprint import pprint
-import hashlib
-import bisect
 
 ## Configuration
 
@@ -205,71 +203,6 @@ def progressive_read_url(page, out_file, length, decode_unicode=False,
     print_hook.done_writing() #tell the printer reading is Done
 
 # Update Functionality
-
-class StreamingFile(object):
-
-    def __init__(self, url, chunk_size=1024, encoding=None, 
-                 print_hook=None, decode_unicode=False):
-        self.read_bytes = 0
-        self.chunk_size = chunk_size
-        self.print_hook = print_hook
-        self.decode = decode_unicode
-        self._request = requests.get(url)
-        if encoding:
-            self._request.encoding = encoding
-
-    def run(self, callback, length=None):
-        if self.print_hook: self.print_hook.starting_writing()
-        for chunk in self._request.iter_content(chunk_size=self.chunk_size,
-                                                decode_unicode=self.decode):
-            callback(chunk, self._request)
-            self.read_bytes += self.chunk_size
-            if self.print_hook:
-                self.print_hook.chunk_written(self.read_bytes, length)
-        if self.print_hook:
-            self.print_hook.done_writing()
-
-class UpdateChunk(object):
-    UN, MO = range(2)
-
-    def __init__(self, ref, chunk_size):
-        self.ref = ref
-        self.size = chunk_size
-        self.read_size = 0
-        self.diff = ""
-        self.state = self.UN
-        self.match = self.ref.read(1)
-        self.mark = self.ref.tell()
-        self.count = 0
-
-    def __call__(self, chunk, request):
-        for char in chunk:
-            if self.match == char:
-                if self.state == self.MO: # UN to MO transition
-                    print "found diff"
-                    print "from {0} to {1}".format(self.mark, self.count)
-                    print self.diff
-                    self.diff = ""
-                self.state = self.UN
-                self.match = self.ref.read(1)
-                self.mark = self.ref.tell()
-            elif self.match != char:
-                self.state = self.MO
-                self.diff += char
-            self.count += 1
-
-
-def update_feedfile_streaming(url, name):
-    "Update a podcast over a streaming connection"
-    ensure_feed_dir()
-
-    print "[Streaming] Updating:", name
-    page = StreamingFile(url, encoding="utf-8", decode_unicode=True)
-    with open(feed_pathname(name), 'r') as feed_file:
-        writer = UTF8_WRITER(feed_file)
-        updater = UpdateChunk(UTF8_READER(feed_file), 1024)
-        page.run(updater)
-
 
 def update_feedfile(url, name):
     "Get a feed from the internet"
