@@ -22,7 +22,9 @@ options = dict(
 )
 
 # check for a config file in ~/.podcastrc
-execfile(os.path.join(os.environ["HOME"], '.podcastrc'), options)
+rc_path = os.path.join(os.environ["HOME"], '.podcastrc')
+if os.path.exists(rc_path):
+    execfile(rc_path, options)
 
 # All paths are relative to this one
 ROOT_DIR = options["root_dir"]
@@ -124,10 +126,11 @@ def iter_feeds(feedfile="feeds.yaml"):
     "iterate through a the feed definition file"
     with open(feedfile) as feed_file:
         feeds = yaml.load(feed_file)
-    for feed_name, feed_values in feeds.iteritems():
-        feed_d = dict(name=feed_name)
-        feed_d.update(feed_values)
-        yield feed_d
+        for name, url in feeds.iteritems():
+            feed_d = dict(
+                name = name,
+                url = url)
+            yield feed_d
 
 def iter_feed_mask(iterable, only=[]):
     "Mask the iterator to only give requested feeds."
