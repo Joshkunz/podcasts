@@ -362,11 +362,6 @@ if __name__ == "__main__":
     update_.set_defaults(method=update)
     update_.add_argument("podcast", nargs="*",
                          help="Add podcast names to narrow the update.")
-    update_.add_argument("-f", "--force", action='store_true', dest='force',
-                         help="force updating podcast feeds, even if it \
-                         violates time restrictions in the feeds.yaml file.")
-    update_.add_argument("-r", "--streaming", action='store_true',
-                         help="use the experimental streaming updates")
 
     ## Download Section
 
