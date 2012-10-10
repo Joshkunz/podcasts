@@ -112,7 +112,7 @@ $ podcasts download -sES "^1[0-9]{2}.*"
 would find all of the episodes that start with a number from 100 to 199.
 (*Note* the regex matching uses 'search' style matching, so you need a
 ^ at the front to match from the start of a string. Also the exact syntax
-for the regex is python style (complete documentation found [here]))
+for the regex is python style (complete documentation found [here][1]))
 
 Once you have found what episodes you want to download, all you have to
 do is remove the small s flag (`-s`) and re-run the command:
