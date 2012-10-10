@@ -241,9 +241,12 @@ def download_podcast(cast_name, item_details):
     length, ext = get_length(page.headers, item_details["file"]), \
                   get_extension(page.headers, item_details["file"])
 
+    podcast_title = item_details["title"].strip()
+    podcast_filename = podcast_title.replace(os.sep, "_")
+    podcast_filename += ext
     # Download the file
-    path = os.path.join(path, item_details["title"]+ext)
-    print "Downloading:", item_details["title"]
+    path = os.path.join(path, podcast_filename)
+    print "Downloading:", podcast_title
     with open(path, 'wb') as podcast_file:
         progressive_read_url(page, podcast_file, length)
 
