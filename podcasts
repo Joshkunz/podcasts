@@ -251,10 +251,7 @@ def update(args):
     "Update feeds."
     for feed in feed_iterator(args.podcast):
         try:
-            if args.streaming is True:
-                update_feedfile_streaming(feed["url"], feed["name"])
-            else:
-                update_feedfile(feed["url"], feed["name"])
+            update_feedfile(feed["url"], feed["name"])
         except Exception, e:
             import traceback
             traceback.print_exc()
