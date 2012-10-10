@@ -120,6 +120,9 @@ do is remove the small s flag (`-s`) and re-run the command:
 $ podcasts download -S *
 ```
 will download all podcasts episodes (not recommended).
+(*Note*: while in theory this should work, unless you wrap the * in
+quotes like this: "*", the shell will try to expand that to 
+all of the filenames in the current directory.)
 
 Also the same per-podcast filtering rules as above apply. You can
 specify the name of one or more podcasts at the end to make the
