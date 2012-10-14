@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from operator import methodcaller
 from collections import defaultdict
 import re
