@@ -1,3 +1,6 @@
+**UNMAINTAINED** This program is in the process of a brutally slow re-write
+that is unfortunately not high on my priority list at the moment.
+
 podcasts
 ========
 
